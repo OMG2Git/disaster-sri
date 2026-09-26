@@ -1,0 +1,70 @@
+x-app: &app
+  build: .
+  env_file: .env
+  environment: &app-env
+    DATABASE_URL: postgres://postgres:postgres@postgres:5432/disaster
+    REDIS_URL: redis://redis:6379
+    COMMUNITY_API_URL: http://mock-community-api:4000
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+    redis:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: disaster
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      # -h 127.0.0.1 forces TCP: the image's temporary init-time server only listens on a unix socket,
+      # so a socket check would report "healthy" before the real server is up.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d disaster"]
+      interval: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 20
+
+  # One-shot: applies SQL migrations, then exits. Everything else waits for it.
+  migrate:
+    build: .
+    env_file: .env
+    environment: *app-env
+    command: npm run migrate
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    <<: *app
+    command: npm run start:api
+    ports: ["3000:3000"]
+
+  outbox-publisher:
+    <<: *app
+    command: npm run start:outbox
+
+  location-worker:
+    <<: *app
+    command: npm run start:location-worker
+
+  realtime:
+    <<: *app
+    command: npm run start:realtime
+    ports: ["3001:3001"]
+
+  mock-community-api:
+    build: .
+    command: npm run start:mock-community
+    ports: ["4000:4000"]
+
+volumes:
+  pgdata:

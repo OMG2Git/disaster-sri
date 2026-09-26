@@ -1,0 +1,800 @@
+{
+  "info": {
+    "name": "Disaster Response API",
+    "description": "Run the requests top to bottom: the login requests store a token, and 'Create disaster' stores disasterId. Seed accounts (npm run seed): admin@example.com / Admin1234!  and  contributor@example.com / Contributor1234!. Realtime SSE (GET {{sseUrl}}/events/disasters) is a streaming endpoint; use a browser, curl -N, or the frontend to watch it.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "sseUrl",
+      "value": "http://localhost:3001"
+    },
+    {
+      "key": "mockUrl",
+      "value": "http://localhost:4000"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "disasterId",
+      "value": "10000000-0000-4000-8000-000000000001"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register (always CONTRIBUTOR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo User\",\n  \"email\": \"demo{{$timestamp}}@example.com\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('role is CONTRIBUTOR', () => pm.expect(pm.response.json().role).to.eql('CONTRIBUTOR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as CONTRIBUTOR (seeded)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"contributor@example.com\",\n  \"password\": \"Contributor1234!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token', j.access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as ADMIN (seeded)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"Admin1234!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('adminToken', j.access_token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Disasters",
+      "item": [
+        {
+          "name": "Create disaster (CONTRIBUTOR token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/disasters",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "disasters"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Flooding in Manhattan\",\n  \"description\": \"Heavy flooding has affected Manhattan, NYC and nearby areas.\",\n  \"tags\": [\n    \"flood\",\n    \"urban\"\n  ],\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Returns 201 immediately with location_status PENDING; the location is resolved asynchronously (Gemini then Nominatim)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('starts PENDING', () => pm.expect(j.location_status).to.eql('PENDING'));",
+                  "pm.collectionVariables.set('disasterId', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List disasters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/disasters?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "disasters"
+              ],
+              "query": [
+                {
+                  "key": "tag",
+                  "value": "flood",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "ACTIVE",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "disabled": true
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public. Enable the tag/status query params to filter."
+          }
+        },
+        {
+          "name": "Get disaster",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/disasters/{{disasterId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "disasters",
+                "{{disasterId}}"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Update disaster (owner or admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/disasters/{{disasterId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "disasters",
+                "{{disasterId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Flooding in Manhattan (updated)\",\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Changing 'description' clears the location and re-runs location resolution."
+          }
+        },
+        {
+          "name": "Update description (re-locates)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/disasters/{{disasterId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "disasters",
+                "{{disasterId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Correction: the flooding is in Brooklyn, NYC.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Resources (PostGIS)",
+      "item": [
+        {
+          "name": "Nearby resources around the incident",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/disasters/{{disasterId}}/resources?radius=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "disasters",
+                "{{disasterId}}",
+                "resources"
+              ],
+              "query": [
+                {
+                  "key": "radius",
+                  "value": "5"
+                },
+                {
+                  "key": "type",
+                  "value": "HOSPITAL",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "25",
+                  "disabled": true
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Centre = the disaster's resolved location. Returns 422 if the location is still PENDING/FAILED."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, or 422 while the location is still PENDING', () => pm.expect([200, 422]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Nearby resources around a point",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/disasters/{{disasterId}}/resources?lat=40.78&lng=-73.97&radius=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "disasters",
+                "{{disasterId}}",
+                "resources"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "40.78"
+                },
+                {
+                  "key": "lng",
+                  "value": "-73.97"
+                },
+                {
+                  "key": "radius",
+                  "value": "5"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "lat and lng must be given together."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, or 422 while the location is still PENDING', () => pm.expect([200, 422]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Community reports",
+      "item": [
+        {
+          "name": "Get community reports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/disasters/{{disasterId}}/reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "disasters",
+                "{{disasterId}}",
+                "reports"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "meta.source is external, cache, or stale-cache. 503 if the external service fails and nothing is cached."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 or 503', () => pm.expect([200, 503]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mock community service (external)",
+      "item": [
+        {
+          "name": "Reports (success)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mockUrl}}/external/community-reports?query=Manhattan&scenario=success",
+              "host": [
+                "{{mockUrl}}"
+              ],
+              "path": [
+                "external",
+                "community-reports"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "Manhattan"
+                },
+                {
+                  "key": "scenario",
+                  "value": "success"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sc = pm.request.url.query.get('scenario');",
+                  "const expected = sc === 'error' ? 500 : 200;",
+                  "pm.test('scenario ' + sc + ' => ' + expected, () => pm.response.to.have.status(expected));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reports (500 error)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mockUrl}}/external/community-reports?query=Manhattan&scenario=error",
+              "host": [
+                "{{mockUrl}}"
+              ],
+              "path": [
+                "external",
+                "community-reports"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "Manhattan"
+                },
+                {
+                  "key": "scenario",
+                  "value": "error"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sc = pm.request.url.query.get('scenario');",
+                  "const expected = sc === 'error' ? 500 : 200;",
+                  "pm.test('scenario ' + sc + ' => ' + expected, () => pm.response.to.have.status(expected));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reports (empty)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mockUrl}}/external/community-reports?query=Manhattan&scenario=empty",
+              "host": [
+                "{{mockUrl}}"
+              ],
+              "path": [
+                "external",
+                "community-reports"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "Manhattan"
+                },
+                {
+                  "key": "scenario",
+                  "value": "empty"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sc = pm.request.url.query.get('scenario');",
+                  "const expected = sc === 'error' ? 500 : 200;",
+                  "pm.test('scenario ' + sc + ' => ' + expected, () => pm.response.to.have.status(expected));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reports (slow, ~6s)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mockUrl}}/external/community-reports?query=Manhattan&scenario=slow",
+              "host": [
+                "{{mockUrl}}"
+              ],
+              "path": [
+                "external",
+                "community-reports"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "Manhattan"
+                },
+                {
+                  "key": "scenario",
+                  "value": "slow"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sc = pm.request.url.query.get('scenario');",
+                  "const expected = sc === 'error' ? 500 : 200;",
+                  "pm.test('scenario ' + sc + ' => ' + expected, () => pm.response.to.have.status(expected));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Health & docs",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('reports status', () => pm.expect(['ok','degraded','down']).to.include(pm.response.json().status));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "OpenAPI spec",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/openapi.json",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "openapi.json"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Swagger UI is at {{baseUrl}}/docs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cleanup",
+      "item": [
+        {
+          "name": "Delete disaster (ADMIN)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/disasters/{{disasterId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "disasters",
+                "{{disasterId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Admin only (uses {{adminToken}}). Run last: it removes the incident created above."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

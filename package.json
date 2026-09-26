@@ -1,0 +1,60 @@
+{
+  "name": "disaster-response-platform",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "npm --prefix frontend install && docker compose up -d --wait postgres redis && npm run migrate && npm run seed",
+    "dev": "concurrently -n api,outbox,location,realtime,mock,web -c cyan,blue,green,magenta,yellow,white \"npm:dev:api\" \"npm:dev:outbox\" \"npm:dev:location-worker\" \"npm:dev:realtime\" \"npm:dev:mock-community\" \"npm:dev:frontend\"",
+    "dev:api": "tsx watch src/server.ts",
+    "dev:outbox": "tsx watch src/workers/outbox-publisher.ts",
+    "dev:location-worker": "tsx watch src/workers/location-worker.ts",
+    "dev:realtime": "tsx watch src/workers/realtime-worker.ts",
+    "dev:mock-community": "tsx watch mock-community-api/server.ts",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "start:api": "tsx src/server.ts",
+    "start:outbox": "tsx src/workers/outbox-publisher.ts",
+    "start:location-worker": "tsx src/workers/location-worker.ts",
+    "start:realtime": "tsx src/workers/realtime-worker.ts",
+    "start:mock-community": "tsx mock-community-api/server.ts",
+    "migrate": "tsx src/db/migrate.ts",
+    "seed": "tsx src/db/seed.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "infra": "docker compose up -d --wait postgres redis",
+    "docs:openapi": "tsx src/docs/export-openapi.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "ioredis": "^5.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.0",
+    "swagger-ui-express": "^5.0.1",
+    "tsx": "^4.19.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.10",
+    "@types/supertest": "^6.0.2",
+    "@types/swagger-ui-express": "^4.1.7",
+    "concurrently": "^10.0.5",
+    "supertest": "^7.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "description": "Disaster Response Coordination Platform: Express + PostgreSQL/PostGIS + Redis Streams backend and a React test console",
+  "engines": {
+    "node": ">=20"
+  }
+}
